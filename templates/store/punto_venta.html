@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Punto de Venta</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen" x-data="puntoVenta()">
+
+  <nav class="bg-blue-600 text-white p-4 flex justify-between items-center shadow-lg">
+    <span class="font-bold text-lg">🛒 Punto de Venta</span>
+    <div class="space-x-6">
+      <a href="{% url 'lista_pedidos_delivery' %}" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-2 rounded-lg text-sm font-semibold flex items-center gap-1">
+    📦 Pedidos Delivery </a>
+      <a href="{% url 'punto_venta' %}" class="hover:text-blue-200 font-medium">Caja</a>
+      <a href="{% url 'lista_clientes' %}" class="hover:text-blue-200 font-medium">Clientes</a>
+      <a href="{% url 'lista_productos' %}" class="hover:text-blue-200 font-medium">Ver Productos</a>
+      <span class="text-blue-200">| {{ request.user.username }}</span>
+      <a href="{% url 'logout' %}" class="hover:text-red-300 font-medium">Salir</a>
+    </div>
+  </nav>
+
+  <div class="container mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+    
+    <!-- Productos -->
+    <div class="lg:col-span-2 space-y-4">
+      <h2 class="text-xl font-bold text-gray-800">📦 Catálogo</h2>
+      <input type="text" x-model="busqueda" placeholder="Buscar producto..." 
+        class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none">
+      
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-4 max-h-[70vh] overflow-y-auto">
+        <template x-for="p in productosFiltrados" :key="p.id">
+          <div @click="agregarAlCarrito(p)" 
+            class="bg-white p-4 rounded-xl shadow hover:shadow-lg cursor-pointer transition transform hover:scale-[1.02] border-2 border-transparent hover:border-blue-400">
+            <h3 class="font-bold text-gray-800" x-text="p.nombre"></h3>
+            <p class="text-blue-600 font-bold">Q<span x-text="p.precio"></span></p>
+            <p class="text-sm text-gray-500">Stock: <span x-text="p.stock"></span></p>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- Carrito y Datos de Facturación -->
+    <div class="bg-white rounded-xl shadow-lg p-6 h-fit">
+      <h2 class="text-xl font-bold text-gray-800 mb-4">🛍️ Carrito</h2>
+      
+      <!-- Opciones de Facturación -->
+      <div class="mb-4 bg-gray-50 p-3 rounded-lg border border-gray-200 space-y-3">
+        <div>
+          <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Tipo de Comprobante</label>
+          <select x-model="tipoFactura" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+            <option value="cf">Consumidor Final (CF)</option>
+            <option value="registrado">Cliente Registrado</option>
+            <option value="nuevo">Ingresar NIT/Nombre Manual</option>
+          </select>
+        </div>
+
+        <!-- Opción 1: Cliente Registrado -->
+        <div x-show="tipoFactura === 'registrado'">
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Buscar Cliente</label>
+          <select x-model="clienteId" class="w-full border border-gray-300 rounded-lg px-2 py-1.5 text-sm">
+            <option value="">-- Seleccionar --</option>
+            {% for c in clientes %}
+            <option value="{{ c.pk }}" data-nit="{{ c.nit }}" data-nombre="{{ c.nombre }}">{{ c.nombre }} (NIT: {{ c.nit }})</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Opción 2: NIT/Nombre Manual -->
+        <div x-show="tipoFactura === 'nuevo'" class="space-y-2">
+          <div>
+            <label class="block text-xs font-semibold text-gray-600">NIT</label>
+            <input type="text" x-model="nitManual" placeholder="Ej: 1234567-8" class="w-full border border-gray-300 rounded-lg px-2 py-1 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-600">Nombre / Razón Social</label>
+            <input type="text" x-model="nombreManual" placeholder="Nombre para la factura" class="w-full border border-gray-300 rounded-lg px-2 py-1 text-sm">
+          </div>
+        </div>
+      </div>
+
+      <!-- Detalle de Productos -->
+      <div class="space-y-3 max-h-[35vh] overflow-y-auto">
+        <template x-for="(item, index) in carrito" :key="index">
+          <div class="flex justify-between items-center bg-gray-50 p-3 rounded-lg">
+            <div>
+              <p class="font-semibold text-sm" x-text="item.nombre"></p>
+              <p class="text-xs text-gray-500">Q<span x-text="item.precio"></span> x <span x-text="item.cantidad"></span></p>
+            </div>
+            <div class="flex items-center space-x-2">
+              <button @click="restar(index)" class="bg-red-100 text-red-600 px-2 py-1 rounded">−</button>
+              <span x-text="item.cantidad" class="font-bold w-4 text-center"></span>
+              <button @click="sumar(index)" class="bg-green-100 text-green-600 px-2 py-1 rounded">+</button>
+            </div>
+          </div>
+        </template>
+        <div x-show="carrito.length === 0" class="text-center text-gray-400 py-8">
+          El carrito está vacío
+        </div>
+      </div>
+
+      <!-- Desglose Fiscal Correcto (IVA Incluido) -->
+      <div class="border-t mt-4 pt-4 space-y-2">
+        <div class="flex justify-between text-gray-600"><span>Subtotal (Base):</span><span>Q<span x-text="subtotal.toFixed(2)"></span></span></div>
+        <div class="flex justify-between text-gray-600"><span>IVA (12%):</span><span>Q<span x-text="iva.toFixed(2)"></span></span></div>
+        <div class="flex justify-between text-xl font-bold text-gray-800 border-t pt-2"><span>TOTAL:</span><span>Q<span x-text="total.toFixed(2)"></span></span></div>
+      </div>
+
+      <button @click="cobrar" :disabled="carrito.length === 0 || cargando"
+        class="w-full mt-4 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-bold py-3 rounded-lg transition">
+        <span x-show="!cargando">💵 Cobrar e Imprimir Ticket</span>
+        <span x-show="cargando">Procesando Venta...</span>
+      </button>
+    </div>
+
+  </div>
+
+  <div x-show="notificacion" x-transition 
+    class="fixed bottom-4 right-4 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg" x-text="notificacion"></div>
+
+  <script>
+    function puntoVenta() {
+      return {
+        busqueda: '',
+        tipoFactura: 'cf',
+        clienteId: '',
+        nitManual: '',
+        nombreManual: '',
+        carrito: [],
+        cargando: false,
+        notificacion: '',
+        productos: [
+          {% for p in productos %}
+          {id: {{ p.pk }}, nombre: "{{ p.nombre }}", precio: {{ p.precio }}, stock: {{ p.stock }}},
+          {% endfor %}
+        ],
+        
+        get productosFiltrados() {
+          return this.productos.filter(p => p.nombre.toLowerCase().includes(this.busqueda.toLowerCase()));
+        },
+        
+        get total() {
+          return this.carrito.reduce((sum, item) => sum + (item.precio * item.cantidad), 0);
+        },
+
+        get subtotal() {
+          return this.total / 1.12;
+        },
+        
+        get iva() {
+          return this.total - this.subtotal;
+        },
+        
+        agregarAlCarrito(producto) {
+          const existente = this.carrito.find(item => item.id === producto.id);
+          if (existente) {
+            if (existente.cantidad < producto.stock) existente.cantidad++;
+          } else {
+            this.carrito.push({...producto, cantidad: 1});
+          }
+        },
+        
+        sumar(index) {
+          const item = this.carrito[index];
+          const prod = this.productos.find(p => p.id === item.id);
+          if (item.cantidad < prod.stock) item.cantidad++;
+        },
+        
+        restar(index) {
+          if (this.carrito[index].cantidad > 1) {
+            this.carrito[index].cantidad--;
+          } else {
+            this.carrito.splice(index, 1);
+          }
+        },
+        
+        async cobrar() {
+          this.cargando = true;
+          const items = this.carrito.map(i => ({id: i.id, cantidad: i.cantidad, precio: i.precio}));
+          
+          let payload = {
+            items: items,
+            tipo_factura: this.tipoFactura,
+            cliente_id: this.clienteId,
+            nit_manual: this.nitManual,
+            nombre_manual: this.nombreManual
+          };
+
+          try {
+            const response = await fetch('/tienda/api/guardar-venta/', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token }}'
+              },
+              body: JSON.stringify(payload)
+            });
+            
+            const data = await response.json();
+            this.cargando = false;
+            
+            if (data.success) {
+              this.notificacion = `✅ Venta #${data.venta_id} registrada`;
+              
+              // Abrir ventana flotante para imprimir el ticket
+              window.open(`/tienda/factura/${data.venta_id}/`, 'Factura', 'width=400,height=600');
+
+              // Limpiar estado
+              this.carrito = [];
+              this.tipoFactura = 'cf';
+              this.clienteId = '';
+              this.nitManual = '';
+              this.nombreManual = '';
+
+              setTimeout(() => this.notificacion = '', 3000);
+            } else {
+              alert(data.error || 'Error al guardar la venta');
+            }
+          } catch (error) {
+            this.cargando = false;
+            alert('Ocurrió un error de conexión');
+          }
+        }
+      }
+    }
+  </script>
+</body>
+</html>

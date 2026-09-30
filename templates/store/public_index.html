@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supermercado - Pedidos en Línea</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <style>
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen pb-20" x-data="tiendaApp()">
+
+    <!-- Header / Navbar -->
+    <header class="bg-blue-600 text-white sticky top-0 z-30 shadow-md">
+        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+            <h1 class="text-xl font-bold flex items-center gap-2">🛒 Supermercado Delivery</h1>
+            
+            <div class="flex items-center gap-3">
+                <!-- Botón Carrito -->
+                <button @click="verCarrito = true" class="relative bg-blue-700 hover:bg-blue-800 px-4 py-2 rounded-lg font-semibold text-sm flex items-center gap-2 transition">
+                    <span>🛍️ Mi Pedido</span>
+                    <span x-show="carrito.length > 0" x-text="carrito.reduce((acc, i) => acc + i.cantidad, 0)" class="bg-yellow-400 text-gray-900 text-xs font-extrabold px-2 py-0.5 rounded-full"></span>
+                </button>
+
+                <!-- Acceso Empleados / Login -->
+                {% if request.user.is_authenticated %}
+                    <a href="{% url 'punto_venta' %}" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-semibold text-sm transition">
+                        Ir al POS
+                    </a>
+                {% else %}
+                    <a href="{% url 'login' %}" class="bg-white/10 hover:bg-white/20 border border-white/30 text-white px-4 py-2 rounded-lg font-semibold text-sm transition">
+                        🔑 Acceso Empleados
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+
+    <!-- Filtros y Catálogo -->
+    <main class="container mx-auto px-4 py-6 max-w-7xl">
+        
+        <!-- Barra de Filtro y Búsqueda -->
+        <div class="bg-white p-4 rounded-xl shadow-sm mb-6 border border-gray-100 flex flex-col md:flex-row gap-4 justify-between items-center">
+            <form method="get" class="flex flex-col md:flex-row gap-3 w-full">
+                <input type="text" name="q" value="{{ busqueda }}" placeholder="Buscar por producto..." class="px-4 py-2.5 border rounded-lg text-sm flex-1 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none transition">
+                <select name="categoria" onchange="this.form.submit()" class="px-4 py-2.5 border rounded-lg text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none cursor-pointer transition">
+                    <option value="">Todas las categorías</option>
+                    {% for cat in categorias %}
+                        <option value="{{ cat.id }}" {% if cat.id == categoria_seleccionada %}selected{% endif %}>{{ cat.nombre }}</option>
+                    {% endfor %}
+                </select>
+                {% if categoria_seleccionada or busqueda %}
+                    <a href="{% url 'home' %}" class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2.5 rounded-lg font-medium text-sm transition text-center">
+                        Limpiar
+                    </a>
+                {% endif %}
+            </form>
+        </div>
+
+        <!-- Grid de Productos con Imágenes -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {% for p in productos %}
+            <div class="bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition overflow-hidden flex flex-col justify-between">
+                
+                <div>
+                    <!-- Imagen del Producto -->
+                    <div class="w-full h-48 bg-gray-100 relative overflow-hidden">
+                        {% if p.imagen %}
+                            <img src="{{ p.imagen.url }}" alt="{{ p.nombre }}" class="w-full h-full object-cover">
+                        {% else %}
+                            <div class="w-full h-full flex flex-col items-center justify-center text-gray-400">
+                                <span class="text-4xl">📦</span>
+                                <span class="text-xs mt-1">Sin imagen</span>
+                            </div>
+                        {% endif %}
+                        
+                        <span class="absolute top-2 left-2 bg-blue-600/90 text-white text-[10px] font-bold px-2 py-1 rounded-md shadow">
+                            {{ p.categoria.nombre|default:"General" }}
+                        </span>
+                    </div>
+
+                    <!-- Detalles del Producto -->
+                    <div class="p-4">
+                        <h3 class="font-bold text-gray-800 text-lg leading-snug line-clamp-2">{{ p.nombre }}</h3>
+                        <p class="text-2xl font-black text-gray-900 mt-2">Q{{ p.precio }}</p>
+                        <p class="text-xs text-gray-400 mt-1">Stock disponible: {{ p.stock }} u.</p>
+                    </div>
+                </div>
+
+                <!-- Botón de Agregar al Carrito -->
+                <div class="p-4 pt-0">
+                    <button @click="agregarAlCarrito({{ p.id }}, '{{ p.nombre|escapejs }}', {{ p.precio }}, {{ p.stock }}, '{% if p.imagen %}{{ p.imagen.url }}{% endif %}')" 
+                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2.5 rounded-xl text-sm transition shadow-lg shadow-blue-600/20 active:scale-95">
+                        + Agregar al Pedido
+                    </button>
+                </div>
+
+            </div>
+            {% empty %}
+            <div class="col-span-full text-center py-16 text-gray-500 bg-white rounded-2xl border border-gray-100 shadow-sm">
+                <span class="text-5xl block mb-2">🔍</span>
+                <p class="font-semibold text-lg">No se encontraron productos disponibles.</p>
+            </div>
+            {% endfor %}
+        </div>
+
+    </main>
+
+    <!-- Modal / Drawer del Carrito & Formulario de Envío -->
+    <div x-show="verCarrito" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex justify-end" x-cloak>
+        <div class="bg-white w-full max-w-md h-full p-6 flex flex-col justify-between overflow-y-auto shadow-2xl">
+            
+            <div>
+                <div class="flex justify-between items-center border-b pb-4 mb-4">
+                    <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">🛵 Tu Pedido a Domicilio</h2>
+                    <button @click="verCarrito = false" class="text-gray-400 hover:text-gray-700 text-2xl font-bold">&times;</button>
+                </div>
+
+                <template x-if="carrito.length === 0">
+                    <div class="text-center text-gray-400 py-12">
+                        <span class="text-4xl block mb-2">🛒</span>
+                        <p class="text-sm">Tu carrito está vacío.</p>
+                    </div>
+                </template>
+
+                <div class="space-y-3">
+                    <template x-for="item in carrito" :key="item.id">
+                        <div class="flex items-center gap-3 border-b pb-3 text-sm">
+                            <!-- Miniatura en Carrito -->
+                            <div class="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 border">
+                                <template x-if="item.imagen">
+                                    <img :src="item.imagen" :alt="item.nombre" class="w-full h-full object-cover">
+                                </template>
+                                <template x-if="!item.imagen">
+                                    <div class="w-full h-full flex items-center justify-center text-gray-400 text-xs">📦</div>
+                                </template>
+                            </div>
+
+                            <div class="flex-1">
+                                <p class="font-bold text-gray-800 line-clamp-1" x-text="item.nombre"></p>
+                                <p class="text-xs text-gray-500">Q<span x-text="item.precio.toFixed(2)"></span> c/u</p>
+                            </div>
+
+                            <div class="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
+                                <button @click="restar(item.id)" class="w-6 h-6 bg-white rounded font-bold text-gray-700 shadow-sm hover:bg-gray-200">-</button>
+                                <span class="font-bold text-xs px-1" x-text="item.cantidad"></span>
+                                <button @click="sumar(item.id)" class="w-6 h-6 bg-white rounded font-bold text-gray-700 shadow-sm hover:bg-gray-200">+</button>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Formulario Cliente -->
+            <div x-show="carrito.length > 0" class="border-t pt-4 mt-4">
+                <div class="text-lg font-black flex justify-between mb-4">
+                    <span>Total a pagar:</span>
+                    <span class="text-blue-600">Q<span x-text="calcularTotal().toFixed(2)"></span></span>
+                </div>
+
+                <div class="space-y-3 mb-4">
+                    <input type="text" x-model="form.nombre" placeholder="Nombre completo *" class="w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                    <input type="text" x-model="form.telefono" placeholder="Teléfono *" class="w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                    <textarea x-model="form.direccion" placeholder="Dirección exacta de entrega *" class="w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 h-16"></textarea>
+                    <input type="text" x-model="form.notas" placeholder="Instrucciones o referencias adicionales" class="w-full px-3 py-2 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+
+                <button @click="enviarPedido()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl text-center shadow-lg shadow-green-600/30 transition">
+                    Confirmar Pedido
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Script de Alpine.js para la lógica del carrito -->
+    <script>
+        function tiendaApp() {
+            return {
+                verCarrito: false,
+                carrito: [],
+                form: { nombre: '', telefono: '', direccion: '', notas: '' },
+                
+                agregarAlCarrito(id, nombre, precio, stock, imagen) {
+                    let item = this.carrito.find(i => i.id === id);
+                    if (item) {
+                        if (item.cantidad < stock) item.cantidad++;
+                    } else {
+                        this.carrito.push({
+                            id,
+                            nombre,
+                            precio: parseFloat(precio),
+                            cantidad: 1,
+                            stock,
+                            imagen
+                        });
+                    }
+                    this.verCarrito = true;
+                },
+                
+                sumar(id) {
+                    let item = this.carrito.find(i => i.id === id);
+                    if (item && item.cantidad < item.stock) item.cantidad++;
+                },
+                
+                restar(id) {
+                    let item = this.carrito.find(i => i.id === id);
+                    if (item) {
+                        item.cantidad--;
+                        if (item.cantidad <= 0) {
+                            this.carrito = this.carrito.filter(i => i.id !== id);
+                        }
+                    }
+                },
+                
+                calcularTotal() {
+                    return this.carrito.reduce((acc, i) => acc + (i.precio * i.cantidad), 0);
+                },
+                
+                async enviarPedido() {
+                    if (!this.form.nombre || !this.form.telefono || !this.form.direccion) {
+                        alert('Por favor completa los campos obligatorios (*)');
+                        return;
+                    }
+                    
+                    const payload = { ...this.form, items: this.carrito };
+                    
+                    try {
+                        const response = await fetch('/api/pedidos/crear/', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': '{{ csrf_token }}'
+                            },
+                            body: JSON.stringify(payload)
+                        });
+                        
+                        const res = await response.json();
+                        
+                        if (res.success) {
+                            alert('¡Pedido enviado con éxito! Orden #' + res.pedido_id);
+                            this.carrito = [];
+                            this.form = { nombre: '', telefono: '', direccion: '', notas: '' };
+                            this.verCarrito = false;
+                        } else {
+                            alert('Error: ' + res.error);
+                        }
+                    } catch (e) {
+                        alert('Ocurrió un error al procesar la solicitud.');
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>

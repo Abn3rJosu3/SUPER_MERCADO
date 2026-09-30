@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <nav class="bg-indigo-700 text-white p-4 flex justify-between items-center shadow-lg">
+    <span class="font-bold text-lg">📊 Panel Administrador</span>
+    <div class="space-x-6">
+      <a href="{% url 'dashboard_admin' %}" class="hover:text-indigo-200 font-medium">Dashboard</a>
+      <a href="{% url 'lista_productos' %}" class="hover:text-indigo-200 font-medium">Productos</a>
+      <a href="{% url 'lista_proveedores' %}" class="hover:text-indigo-200 font-medium">Proveedores</a>
+      <a href="{% url 'punto_venta' %}" class="hover:text-indigo-200 font-medium">Punto de Venta</a>
+      <span class="text-indigo-200">| {{ request.user.username }}</span>
+      <a href="{% url 'logout' %}" class="hover:text-red-300 font-medium">Salir</a>
+    </div>
+  </nav>
+
+  <div class="container mx-auto p-6">
+    <h1 class="text-3xl font-bold text-gray-800 mb-6">Bienvenido, {{ request.user.username }}</h1>
+    
+    <!-- Tarjetas -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div class="bg-white p-6 rounded-xl shadow hover:shadow-lg transition">
+        <h2 class="text-sm font-bold text-indigo-600 uppercase tracking-wide">💰 Ventas Hoy</h2>
+        <p class="text-3xl font-bold text-gray-800 mt-2">Q{{ total_dia|default:"0.00" }}</p>
+      </div>
+      <div class="bg-white p-6 rounded-xl shadow hover:shadow-lg transition">
+        <h2 class="text-sm font-bold text-green-600 uppercase tracking-wide">📅 Ventas del Mes</h2>
+        <p class="text-3xl font-bold text-gray-800 mt-2">Q{{ total_mes|default:"0.00" }}</p>
+      </div>
+      <div class="bg-white p-6 rounded-xl shadow hover:shadow-lg transition">
+        <h2 class="text-sm font-bold text-orange-600 uppercase tracking-wide">📦 Productos</h2>
+        <p class="text-3xl font-bold text-gray-800 mt-2">{{ total_productos }}</p>
+      </div>
+      <div class="bg-white p-6 rounded-xl shadow hover:shadow-lg transition">
+        <h2 class="text-sm font-bold text-purple-600 uppercase tracking-wide">🏢 Proveedores</h2>
+        <p class="text-3xl font-bold text-gray-800 mt-2">{{ total_proveedores }}</p>
+      </div>
+    </div>
+
+    <!-- Últimas ventas -->
+    <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+      <h2 class="text-xl font-bold text-gray-800 mb-4">🕐 Últimas Ventas</h2>
+      <table class="w-full text-left">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="p-3 font-semibold text-gray-600"># Venta</th>
+            <th class="p-3 font-semibold text-gray-600">Cliente</th>
+            <th class="p-3 font-semibold text-gray-600">Cajero</th>
+            <th class="p-3 font-semibold text-gray-600">Total</th>
+            <th class="p-3 font-semibold text-gray-600">Fecha</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          {% for v in ultimas_ventas %}
+          <tr class="hover:bg-gray-50">
+            <td class="p-3 text-gray-800 font-medium">#{{ v.id }}</td>
+            <td class="p-3 text-gray-600">{{ v.cliente|default:"Consumidor Final" }}</td>
+            <td class="p-3 text-gray-600">{{ v.cajero }}</td>
+            <td class="p-3 text-gray-800 font-bold">Q{{ v.total }}</td>
+            <td class="p-3 text-gray-500 text-sm">{{ v.creado_en|date:"d/m/Y H:i" }}</td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="5" class="p-8 text-center text-gray-500">No hay ventas registradas aún.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Gráfico -->
+    <div class="bg-white rounded-xl shadow-lg p-6">
+      <h2 class="text-xl font-bold text-gray-800 mb-4">📈 Resumen</h2>
+      <canvas id="resumenChart" height="100"></canvas>
+    </div>
+  </div>
+
+  <script>
+    const ctx = document.getElementById('resumenChart').getContext('2d');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Ventas Hoy', 'Ventas Mes', 'Productos', 'Proveedores'],
+        datasets: [{
+          label: 'Cantidad',
+          data: [{{ total_dia|default:0 }}, {{ total_mes|default:0 }}, {{ total_productos }}, {{ total_proveedores }}],
+          backgroundColor: ['#4f46e5', '#22c55e', '#f97316', '#a855f7'],
+          borderRadius: 8
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: { y: { beginAtZero: true } }
+      }
+    });
+  </script>
+</body>
+</html>
