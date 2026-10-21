@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestión de Clientes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+
+  <nav class="bg-blue-600 text-white p-4 flex justify-between items-center shadow-lg">
+    <span class="font-bold text-lg">👥 Gestión de Clientes</span>
+    <div class="space-x-6">
+      <a href="{% url 'punto_venta' %}" class="hover:text-blue-200 font-medium">Caja</a>
+      <a href="{% url 'lista_productos' %}" class="hover:text-blue-200 font-medium">Productos</a>
+      <a href="{% url 'lista_clientes' %}" class="underline font-bold">Clientes</a>
+      <span class="text-blue-200">| {{ request.user.username }}</span>
+      <a href="{% url 'logout' %}" class="hover:text-red-300 font-medium">Salir</a>
+    </div>
+  </nav>
+
+  <div class="container mx-auto p-6">
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-2xl font-bold text-gray-800">Directorio de Clientes</h2>
+      <a href="{% url 'crear_cliente' %}" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg shadow font-medium transition">
+        ➕ Nuevo Cliente
+      </a>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+      <table class="w-full text-left border-collapse">
+        <thead>
+          <tr class="bg-gray-100 border-b text-gray-700 font-bold text-sm">
+            <th class="p-4">NIT</th>
+            <th class="p-4">Nombre / Razón Social</th>
+            <th class="p-4">Teléfono</th>
+            <th class="p-4">Email</th>
+            <th class="p-4 text-center">Acciones</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y text-sm text-gray-700">
+          {% for c in clientes %}
+          <tr class="hover:bg-gray-50">
+            <td class="p-4 font-bold text-blue-600">{{ c.nit }}</td>
+            <td class="p-4">{{ c.nombre }}</td>
+            <td class="p-4">{{ c.telefono|default:"---" }}</td>
+            <td class="p-4">{{ c.email|default:"---" }}</td>
+            <td class="p-4 text-center space-x-2">
+              <!-- Editar: Disponible para Cajero y Admin -->
+              <a href="{% url 'editar_cliente' c.pk %}" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded text-xs font-semibold">
+                ✏️ Editar
+              </a>
+
+              <!-- Eliminar: Solo visible si el usuario es Admin -->
+              {% if request.user.is_staff or request.user.rol == 'admin' %}
+              <a href="{% url 'eliminar_cliente' c.pk %}" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs font-semibold">
+                🗑️ Eliminar
+              </a>
+              {% endif %}
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="5" class="p-6 text-center text-gray-400">No hay clientes registrados aún.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</body>
+</html>

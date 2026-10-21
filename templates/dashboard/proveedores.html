@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Proveedores</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+  <nav class="bg-indigo-700 text-white p-4 flex justify-between items-center shadow-lg">
+    <span class="font-bold text-lg">🏢 Proveedores</span>
+    <div class="space-x-6">
+      <a href="{% url 'dashboard_admin' %}" class="hover:text-indigo-200 font-medium">Dashboard</a>
+      <a href="{% url 'lista_productos' %}" class="hover:text-indigo-200 font-medium">Productos</a>
+      <a href="{% url 'punto_venta' %}" class="hover:text-indigo-200 font-medium">Punto de Venta</a>
+      <span class="text-indigo-200">| {{ request.user.username }}</span>
+      <a href="{% url 'logout' %}" class="hover:text-red-300 font-medium">Salir</a>
+    </div>
+  </nav>
+
+  <div class="container mx-auto p-6">
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-2xl font-bold text-gray-800">Lista de Proveedores</h1>
+      <a href="{% url 'crear_proveedor' %}" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold">+ Nuevo Proveedor</a>
+    </div>
+
+    <div class="bg-white rounded-xl shadow overflow-hidden">
+      <table class="w-full text-left">
+        <thead class="bg-gray-50">
+          <tr>
+            <th class="p-4 font-semibold text-gray-600">Nombre</th>
+            <th class="p-4 font-semibold text-gray-600">Contacto</th>
+            <th class="p-4 font-semibold text-gray-600">Teléfono</th>
+            <th class="p-4 font-semibold text-gray-600">Email</th>
+            <th class="p-4 font-semibold text-gray-600">Acciones</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          {% for p in proveedores %}
+          <tr class="hover:bg-gray-50">
+            <td class="p-4 font-medium text-gray-800">{{ p.nombre }}</td>
+            <td class="p-4 text-gray-600">{{ p.contacto|default:"—" }}</td>
+            <td class="p-4 text-gray-600">{{ p.telefono|default:"—" }}</td>
+            <td class="p-4 text-gray-600">{{ p.email|default:"—" }}</td>
+            <td class="p-4 space-x-2">
+              <a href="{% url 'editar_proveedor' p.pk %}" class="text-blue-600 hover:underline text-sm">Editar</a>
+              <a href="{% url 'eliminar_proveedor' p.pk %}" class="text-red-600 hover:underline text-sm">Eliminar</a>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="5" class="p-8 text-center text-gray-500">No hay proveedores registrados.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>
